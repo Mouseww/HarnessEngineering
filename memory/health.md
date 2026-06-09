@@ -1,0 +1,14 @@
+﻿# Memory Health
+
+- Generated: 2026-06-09T10:00:22.1717824Z
+
+## Checks
+
+- memory/team: OK
+- memory/project: OK
+- memory/agents: OK
+- entries: 0
+
+## Recommendations
+
+- Capture reusable decisions with scripts/harness.ps1 capture-memory after meaningful work.

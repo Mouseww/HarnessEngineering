@@ -1,0 +1,10 @@
+agent_id: cursor
+runtime: Cursor
+status: planned-adapter
+entrypoints:
+  registry: agents/registry.yaml
+contracts:
+  - protocols/agent-context-routing.md
+  - protocols/context-loading.md
+notes:
+  - At the current stage, keep only the adapter manifest and do not assume Cursor automatically reads this directory.

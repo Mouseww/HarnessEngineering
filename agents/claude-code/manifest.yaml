@@ -1,0 +1,17 @@
+agent_id: claude-code
+runtime: Claude Code
+status: primary
+entrypoints:
+  primary: CLAUDE.md
+  settings: .claude/settings.json
+  skills: .claude/skills
+  subagents: .claude/agents
+  mcp: .mcp.json
+contracts:
+  - protocols/agent-context-routing.md
+  - protocols/context-loading.md
+  - protocols/risk-confirmation.md
+  - protocols/delivery-contract.md
+notes:
+  - Claude Code is the first-class runtime at the current stage.
+  - Claude Code-specific rules must not duplicate core protocol content; they may only reference or adapt it.

@@ -1,0 +1,14 @@
+agent_id: codex
+runtime: Codex
+status: supported
+entrypoints:
+  primary: AGENTS.md
+  registry: agents/registry.yaml
+contracts:
+  - protocols/agent-context-routing.md
+  - protocols/context-loading.md
+  - protocols/risk-confirmation.md
+  - protocols/delivery-contract.md
+notes:
+  - The Codex adapter reads tool-agnostic protocols first.
+  - Codex must not overwrite first-class Claude Code runtime configuration.

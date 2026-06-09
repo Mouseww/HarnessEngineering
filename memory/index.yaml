@@ -1,0 +1,12 @@
+version: 1
+policy: protocols/memory-contract.md
+layers:
+  team: memory/team
+  project: memory/project
+  agents: memory/agents
+indexes:
+  team: memory/team/index.md
+  project: memory/project/index.md
+  claude-code: memory/agents/claude-code/index.md
+  codex: memory/agents/codex/index.md
+

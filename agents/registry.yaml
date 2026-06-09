@@ -1,0 +1,53 @@
+version: 1
+default_agent: claude-code
+
+agents:
+  claude-code:
+    priority: 100
+    runtime_entry: CLAUDE.md
+    settings: .claude/settings.json
+    skills: .claude/skills
+    subagents: .claude/agents
+    hooks: .claude/hooks
+    mcp: .mcp.json
+    memory: memory/agents/claude-code
+    manifest: agents/claude-code/manifest.yaml
+    shared:
+      - core
+      - protocols
+      - flows
+      - wiki
+      - memory/team
+      - memory/project
+
+  codex:
+    priority: 80
+    runtime_entry: AGENTS.md
+    manifest: agents/codex/manifest.yaml
+    memory: memory/agents/codex
+    shared:
+      - core
+      - protocols
+      - flows
+      - wiki
+      - memory/team
+      - memory/project
+
+  cursor:
+    priority: 40
+    manifest: agents/cursor/manifest.yaml
+    shared:
+      - core
+      - protocols
+      - flows
+      - wiki
+
+  gemini-cli:
+    priority: 40
+    manifest: agents/gemini-cli/manifest.yaml
+    shared:
+      - core
+      - protocols
+      - flows
+      - wiki
+

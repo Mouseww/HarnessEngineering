@@ -1,0 +1,5 @@
+.claude/agent-memory/tool-audit.jsonl
+.claude/agent-memory/session-state.json
+node_modules/
+*.log
+

@@ -1,0 +1,34 @@
+﻿{
+    "id":  "design-feature-and-create-plan-20260609084720",
+    "prompt":  "Design feature and create plan",
+    "flow":  "feature-development",
+    "reason":  "Default route for new or changed behavior.",
+    "stages":  [
+                   "context",
+                   "brainstorm",
+                   "design",
+                   "plan",
+                   "implement",
+                   "verify",
+                   "review",
+                   "deliver",
+                   "memory"
+               ],
+    "skills":  [
+                   "discover-context",
+                   "plan-work",
+                   "implement-safely",
+                   "review-changes",
+                   "capture-memory"
+               ],
+    "artifacts":  [
+                      "work/request-routing/latest.md",
+                      "work/request-routing/latest.json",
+                      "work/brainstorms/design-feature-and-create-plan-20260609084720.md",
+                      "work/designs/design-feature-and-create-plan-20260609084720.md",
+                      "work/plans/design-feature-and-create-plan-20260609084720.md",
+                      "work/active/design-feature-and-create-plan-20260609084720.md"
+                  ],
+    "nextCommand":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 brainstorm -Id \"design-feature-and-create-plan-20260609084720\" -Topic \"Request routing: feature-development\" -Goal \"Design feature and create plan\"",
+    "generatedAt":  "2026-06-09T08:47:20.2619017Z"
+}

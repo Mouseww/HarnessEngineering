@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "harness": {
+      "command": "node",
+      "args": [
+        "mcp/harness-server/server.js"
+      ],
+      "env": {
+        "HARNESS_ROOT": "."
+      }
+    }
+  }
+}
+

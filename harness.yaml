@@ -1,0 +1,37 @@
+version: 1
+name: HarnessEngineering
+stage: production-skeleton
+current_goal: multi-agent-compatible
+primary_runtime: claude-code
+future_target: tool-agnostic
+
+runtime_roots:
+  claude_code: ".claude"
+  codex: "."
+  protocols: "protocols"
+  core: "core"
+  wiki: "wiki"
+  memory: "memory"
+  work: "work"
+
+agent_registry: "agents/registry.yaml"
+
+required_protocols:
+  - protocols/agent-context-routing.md
+  - protocols/context-loading.md
+  - protocols/task-lifecycle.md
+  - protocols/risk-confirmation.md
+  - protocols/review-contract.md
+  - protocols/delivery-contract.md
+  - protocols/memory-contract.md
+  - protocols/mcp-contract.md
+  - protocols/hook-contract.md
+
+quality_gates:
+  require_context_discovery: true
+  require_plan_for_multi_step_work: true
+  require_fresh_verification_before_delivery: true
+  require_memory_capture_for_reusable_learning: true
+  forbid_unrequested_git_write_operations: true
+  forbid_unconfirmed_destructive_operations: true
+

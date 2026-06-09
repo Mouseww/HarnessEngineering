@@ -1,0 +1,25 @@
+version: 1
+servers:
+  harness:
+    command: node
+    args:
+      - mcp/harness-server/server.js
+    permission_level: read
+    capabilities:
+      resources:
+        - harness://harness.yaml
+        - harness://agents/registry.yaml
+        - harness://protocols
+      tools:
+        - harness_status
+        - harness_read
+        - harness_create_task
+        - harness_capture_memory
+        - harness_create_brainstorm
+        - harness_create_design
+        - harness_create_plan
+        - harness_update_task_checkpoint
+        - harness_workflow_status
+        - harness_route_request
+    validation:
+      command: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/validate-mcp.ps1"
