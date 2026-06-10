@@ -1,70 +1,110 @@
 # Harness Engineering
 
-Harness Engineering is a team-level engineering operating skeleton that unifies general software engineering, AI agent engineering, and enterprise delivery governance under one protocol system.
+Harness Engineering gives an existing codebase a Claude Code/Codex-ready engineering runtime: request routing, project skills, hooks, MCP tools, verification gates, memory, wiki, and automated review.
 
-Current stage goals:
+## Install Into An Existing Project
 
-- Support multi-agent collaboration.
-- Treat Claude Code as a first-class runtime.
-- Keep adapter entry points for Codex, Cursor, Gemini CLI, and similar tools.
-- Store core rules first as tool-agnostic protocols, then let each agent runtime load them.
-
-## Quick Start
-
-### One-Line Install Into Existing Projects
-
-Run this from an existing project root to install the Harness runtime into that project:
+Run this from the root of the project you want to upgrade:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/Mouseww/HarnessEngineering/main/scripts/install-harness.ps1 | iex; Install-Harness -Target . -Repo Mouseww/HarnessEngineering -Ref main"
 ```
 
-The installer preserves existing `README.md`, `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, and `.claude/settings.json` by appending or merging Harness configuration. Other same-path file conflicts stop the install unless `-Force` is explicitly supplied.
+Then start Claude Code from that same project root:
 
-1. Run the full check from the repository root:
+```powershell
+claude
+```
+
+Use a first prompt like this:
+
+```text
+Use this repository's Harness Engineering runtime. Route my request first, then follow the selected flow, skills, hooks, and verification gates.
+```
+
+## Daily Use
+
+1. Ask Claude Code for real work from the project root.
+2. Harness automatically routes the request into a flow, stages, skills, artifacts, and next command.
+3. Before delivery, Harness runs verification, updates memory/code map/review artifacts, and blocks risky operations unless confirmed.
+
+The normal loop is:
+
+```text
+request -> route -> plan -> implement -> verify -> review -> deliver -> memory
+```
+
+## Check Installation
+
+Run:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/doctor.ps1"
 ```
 
-2. Inspect the current Harness status:
+Expected result:
+
+```text
+doctor: OK
+```
+
+Check current task and memory counts:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" status
 ```
 
-3. Create a real task file:
+## Route A Request Manually
+
+Claude Code does this through hooks, but you can also test routing directly:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" new-task -Id "task-id" -Title "Task title" -Flow "feature-development" -Goal "Task goal" -Verify "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/route-request.ps1" -Prompt "Fix login failure and add regression verification"
 ```
 
-4. Capture one project memory:
+It returns the flow, stages, skills, artifacts, and next command.
+
+## What The Installer Adds
+
+The installer copies or merges:
+
+- `CLAUDE.md` and `AGENTS.md`
+- `.claude/settings.json`, hooks, skills, and subagents
+- `.mcp.json` and the local Harness MCP server
+- `scripts/` validation and workflow commands
+- `protocols/`, `flows/`, `core/`
+- `work/`, `memory/`, and `wiki/`
+
+Existing `README.md`, `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, and `.claude/settings.json` are preserved by appending or merging Harness configuration. Other same-path file conflicts stop the install unless `-Force` is explicitly supplied.
+
+## Useful Commands
+
+| Need | Command |
+| --- | --- |
+| Full health check | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/doctor.ps1"` |
+| Current status | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" status` |
+| Route a request | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/route-request.ps1" -Prompt "..."` |
+| Create task | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" new-task -Id "task-id" -Title "Task title" -Flow "feature-development" -Goal "Task goal" -Verify "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1"` |
+| Capture memory | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" capture-memory -Layer project -Title "Decision title" -Fact "Reusable fact" -Source "Source" -Verified` |
+| Auto-maintenance | `powershell -NoProfile -ExecutionPolicy Bypass -File ".claude/hooks/auto-maintenance.ps1"` |
+
+## Use This Repository Directly
+
+If you are developing Harness Engineering itself:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" capture-memory -Layer project -Title "Decision title" -Fact "Reusable fact" -Source "Source" -Verified
+git clone https://github.com/Mouseww/HarnessEngineering.git
+cd HarnessEngineering
+powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/doctor.ps1"
 ```
 
-5. Claude Code users start from the repository root so Claude Code can load:
+## What Harness Does
 
-- `CLAUDE.md`
-- `.claude/settings.json`
-- `.claude/skills/`
-- `.claude/agents/`
-- `.mcp.json`
-
-6. Codex users start from the repository root so Codex can load:
-
-- `AGENTS.md`
-- `harness.yaml`
-- `agents/registry.yaml`
-
-## Operating Principles
-
-- Core rules live in `protocols/` and `core/` to avoid binding them to one agent.
-- Agent-specific entry points only handle load paths, runtime limits, and tool adaptation.
-- Every task must include context discovery, planning, implementation, verification, review, delivery, and memory capture.
-- Chat history must not replace task state; long-lived state goes into `work/`, `wiki/`, or `memory/`.
+- Routes every request into an engineering flow.
+- Loads project skills for planning, design, implementation, debugging, review, and memory.
+- Blocks dangerous git/delete/production operations unless confirmed.
+- Provides MCP tools for task creation, memory capture, workflow artifacts, and request routing.
+- Generates memory index, code map, workflow gates, and automated review reports.
 
 ## Key Directories
 
@@ -81,50 +121,3 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" captur
 | `memory/` | Layered team, project, and agent memory |
 | `work/` | Active, completed, and archived task state |
 | `scripts/` | Local validation and diagnostic scripts |
-
-## Executable Capabilities
-
-| Capability | Command or Entry | Effect |
-| --- | --- | --- |
-| Status query | `scripts/harness.ps1 status` | Outputs active task and memory counts |
-| Task creation | `scripts/harness.ps1 new-task` | Writes `work/active/<id>.md` |
-| Memory capture | `scripts/harness.ps1 capture-memory` | Writes `memory/<layer>/` and updates `memory/index.yaml` |
-| Brainstorm | `scripts/harness.ps1 brainstorm` | Writes `work/brainstorms/<id>.md` |
-| Design artifact | `scripts/harness.ps1 design` | Writes `work/designs/<id>.md` |
-| Plan artifact | `scripts/harness.ps1 plan` | Writes `work/plans/<id>.md` |
-| Implementation checkpoint | `scripts/harness.ps1 checkpoint` | Updates `work/active/<id>.md` and `work/implementation-log.md` |
-| Workflow status | `scripts/harness.ps1 workflow-status` | Queries brainstorm/design/plan/task/checkpoint status |
-| Hook guard | `.claude/hooks/pre-tool-guard.ps1` | Blocks unauthorized git push/commit/reset operations |
-| Prompt guidance | `.claude/hooks/workflow-guidance.ps1` | Outputs workflow guidance during Claude Code `UserPromptSubmit` |
-| Request routing | `scripts/route-request.ps1` | Maps user requests to flow, stage, skill, artifacts, and next command |
-| Auto-maintenance hook | `.claude/hooks/auto-maintenance.ps1` | Updates memory, code map, and review on Claude Code `Stop` |
-| Memory improvement | `scripts/update-memory-index.ps1` | Generates `memory/auto-index.md` and `memory/health.md` |
-| Code structure map | `scripts/generate-code-map.ps1` | Generates `wiki/architecture/code-map.md` |
-| Automated review | `scripts/review-changes.ps1` | Generates `work/reviews/latest-review.md` |
-| MCP status | `harness_status` | Returns Harness structure status |
-| MCP read | `harness_read` | Reads registered Harness files |
-| MCP task creation | `harness_create_task` | Writes local task files through MCP |
-| MCP memory capture | `harness_capture_memory` | Writes local memory through MCP |
-| MCP workflow | `harness_create_brainstorm/design/plan` | Writes workflow artifacts through MCP |
-| MCP checkpoint | `harness_update_task_checkpoint` | Records implementation evidence through MCP |
-| MCP request routing | `harness_route_request` | Automatically plans the flow for the current request through MCP |
-
-## Automated Hook Artifacts
-
-Claude Code's `Stop` hook runs:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File ".claude/hooks/auto-maintenance.ps1"
-```
-
-It updates:
-
-- `work/request-routing/latest.md`
-- `work/request-routing/latest.json`
-- `memory/auto-index.md`
-- `memory/health.md`
-- `wiki/architecture/code-map.md`
-- `work/reviews/latest-review.md`
-- `work/workflow-gates.md`
-
-These artifacts are deterministic engineering signals generated by scripts. They do not replace human judgment or deeper model review.

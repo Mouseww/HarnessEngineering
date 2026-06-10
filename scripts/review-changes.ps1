@@ -41,6 +41,42 @@ $patterns = @(
 
 $codeExtensions = @(".ps1", ".js", ".ts", ".json", ".yaml", ".yml", ".sh", ".bat", ".cmd", ".py", ".cs", ".java", ".go", ".rs")
 
+function Remove-QuotedSegments {
+  param([Parameter(Mandatory = $true)][string]$Line)
+
+  $withoutSingleQuoted = [regex]::Replace($Line, "'(?:''|[^'])*'", "''")
+  return [regex]::Replace($withoutSingleQuoted, '"(?:""|[^"])*"', '""')
+}
+
+function Test-ReviewPattern {
+  param(
+    [Parameter(Mandatory = $true)][string]$Content,
+    [Parameter(Mandatory = $true)][string]$Pattern,
+    [Parameter(Mandatory = $true)][bool]$CodeOnly
+  )
+
+  if (-not $CodeOnly) {
+    return $Content -match $Pattern
+  }
+
+  foreach ($line in ($Content -split "\r?\n")) {
+    $trimmed = $line.Trim()
+    if ([string]::IsNullOrWhiteSpace($trimmed)) {
+      continue
+    }
+    if ($trimmed.StartsWith("#") -or $trimmed.StartsWith("//")) {
+      continue
+    }
+
+    $candidate = Remove-QuotedSegments -Line $line
+    if ($candidate -match $Pattern) {
+      return $true
+    }
+  }
+
+  return $false
+}
+
 $findings = @()
 foreach ($relative in $reviewTargets) {
   $absolute = Join-Path $rootPath $relative
@@ -61,7 +97,7 @@ foreach ($relative in $reviewTargets) {
     if ($item.CodeOnly -and -not $isCodeLike) {
       continue
     }
-    if ($content -match $item.Pattern) {
+    if (Test-ReviewPattern -Content $content -Pattern $item.Pattern -CodeOnly $item.CodeOnly) {
       $findings += [ordered]@{
         severity = $item.Severity
         path = $relative

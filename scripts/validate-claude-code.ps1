@@ -1,33 +1,70 @@
 $ErrorActionPreference = "Stop"
 
+function Assert-Frontmatter {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string]$Name,
+    [Parameter(Mandatory = $true)][string]$Kind
+  )
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    throw "Missing Claude Code Harness ${Kind}: $Name"
+  }
+
+  $content = Get-Content -LiteralPath $Path -Raw
+  $escapedName = [regex]::Escape($Name)
+  if ($content -notmatch "(?s)^---\s*.*name:\s*$escapedName\s*.*description:\s*Use when .+?---") {
+    throw "Invalid Harness $Kind frontmatter: $Path"
+  }
+}
+
 Get-Content -LiteralPath ".claude/settings.json" -Raw | ConvertFrom-Json | Out-Null
 
-$skills = Get-ChildItem -LiteralPath ".claude/skills" -Directory | Where-Object { $_.Name -ne "_quality" }
-if ($skills.Count -lt 1) {
-  throw "No Claude Code project skills found."
+$skillsRoot = ".claude/skills"
+if (-not (Test-Path -LiteralPath $skillsRoot)) {
+  throw "Missing Claude Code skills directory."
 }
 
-foreach ($skill in $skills) {
-  $skillFile = Join-Path $skill.FullName "SKILL.md"
-  if (-not (Test-Path -LiteralPath $skillFile)) {
-    throw "Missing SKILL.md: $($skill.Name)"
-  }
-  $content = Get-Content -LiteralPath $skillFile -Raw
-  if ($content -notmatch "(?s)^---\s*.*name:\s*[a-zA-Z0-9-]+.*description:\s*Use when .+?---") {
-    throw "Invalid skill frontmatter: $skillFile"
-  }
+$requiredSkills = @(
+  "discover-context",
+  "route-request",
+  "shape-design",
+  "write-implementation-plan",
+  "execute-plan",
+  "diagnose-failure",
+  "prove-behavior-first",
+  "implement-safely",
+  "verify-before-delivery",
+  "review-changes",
+  "request-review",
+  "handle-review-feedback",
+  "release-readiness",
+  "capture-memory",
+  "mcp-governance",
+  "plan-work"
+)
+
+foreach ($skill in $requiredSkills) {
+  Assert-Frontmatter -Path (Join-Path $skillsRoot "$skill/SKILL.md") -Name $skill -Kind "skill"
 }
 
-$agents = Get-ChildItem -LiteralPath ".claude/agents" -Filter "*.md"
-if ($agents.Count -lt 1) {
-  throw "No Claude Code subagents found."
+$agentsRoot = ".claude/agents"
+if (-not (Test-Path -LiteralPath $agentsRoot)) {
+  throw "Missing Claude Code subagents directory."
 }
 
-foreach ($agent in $agents) {
-  $content = Get-Content -LiteralPath $agent.FullName -Raw
-  if ($content -notmatch "(?s)^---\s*.*name:\s*[a-zA-Z0-9-]+.*description:\s*Use when .+?---") {
-    throw "Invalid subagent frontmatter: $($agent.FullName)"
-  }
+$requiredAgents = @(
+  "architect",
+  "implementer",
+  "mcp-curator",
+  "memory-curator",
+  "release-manager",
+  "reviewer",
+  "tester"
+)
+
+foreach ($agent in $requiredAgents) {
+  Assert-Frontmatter -Path (Join-Path $agentsRoot "$agent.md") -Name $agent -Kind "subagent"
 }
 
 Write-Output "validate-claude-code: OK"

@@ -1,6 +1,6 @@
 ﻿# Workflow Gates
 
-- Generated: 2026-06-09T10:00:24.1793923Z
+- Generated: 2026-06-10T01:57:55.9466480Z
 - Source: scripts/update-workflow-gates.ps1
 
 ## Summary

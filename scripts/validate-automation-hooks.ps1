@@ -41,7 +41,8 @@ foreach ($dir in $dirs) {
 Set-Content -LiteralPath (Join-Path $testRoot "harness.yaml") -Encoding UTF8 -Value "version: 1`nname: test"
 Set-Content -LiteralPath (Join-Path $testRoot "memory/team/engineering.md") -Encoding UTF8 -Value "# Engineering Memory`n`n## Fact`n`nUse validation before delivery."
 Set-Content -LiteralPath (Join-Path $testRoot "protocols/context-loading.md") -Encoding UTF8 -Value "# Context Loading"
-Set-Content -LiteralPath (Join-Path $testRoot "scripts/example.ps1") -Encoding UTF8 -Value '$ErrorActionPreference = "Stop"'
+$exampleScript = Join-Path $testRoot "scripts/example.ps1"
+Set-Content -LiteralPath $exampleScript -Encoding UTF8 -Value 'Assert-True -Condition (($settings.permissions.deny -join "`n") -like "*git push*") -Message "Installer did not merge dangerous operation deny rules."'
 Set-Content -LiteralPath (Join-Path $testRoot "mcp/harness-server/server.js") -Encoding UTF8 -Value "console.log('server');"
 
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts/update-memory-index.ps1") -Root $testRoot
@@ -65,7 +66,12 @@ $memoryText = Get-Content -LiteralPath $memoryIndex -Raw
 
 Assert-True -Condition ($codeMapText -like "*Mermaid*") -Message "Code map should include a Mermaid section."
 Assert-True -Condition ($reviewText -like "*Review Summary*") -Message "Review report should include summary."
+Assert-True -Condition ($reviewText -notlike "*unconfirmed git push*") -Message "Review report should not flag a quoted git push policy string."
 Assert-True -Condition ($memoryText -like "*engineering.md*") -Message "Memory auto-index should include memory file."
 
-Write-Output "validate-automation-hooks: OK"
+Set-Content -LiteralPath $exampleScript -Encoding UTF8 -Value "git push origin main"
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts/review-changes.ps1") -Root $testRoot
+$dangerReviewText = Get-Content -LiteralPath $review -Raw
+Assert-True -Condition ($dangerReviewText -like "*unconfirmed git push*") -Message "Review report should flag a real git push command."
 
+Write-Output "validate-automation-hooks: OK"

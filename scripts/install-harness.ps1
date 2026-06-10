@@ -381,9 +381,14 @@ function Install-Harness {
   Initialize-HarnessState -Destination $targetRoot
 
   if (-not $SkipDoctor) {
-    powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $targetRoot "scripts/doctor.ps1")
-    if ($LASTEXITCODE -ne 0) {
-      throw "Installed Harness doctor validation failed."
+    Push-Location -LiteralPath $targetRoot
+    try {
+      powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/doctor.ps1"
+      if ($LASTEXITCODE -ne 0) {
+        throw "Installed Harness doctor validation failed."
+      }
+    } finally {
+      Pop-Location
     }
   }
 
