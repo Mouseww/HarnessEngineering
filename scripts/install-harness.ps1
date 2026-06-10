@@ -88,6 +88,7 @@ function Test-HarnessManagedRelativePath {
   }
 
   $managedClaudeFiles = @(
+    ".claude/settings.json",
     ".claude/hooks/auto-maintenance.ps1",
     ".claude/hooks/post-edit-audit.ps1",
     ".claude/hooks/pre-tool-guard.ps1",
@@ -147,6 +148,49 @@ function Test-HarnessManagedRelativePath {
   return $false
 }
 
+function Get-HarnessManagedHooks {
+  return @(
+    "auto-maintenance.ps1",
+    "post-edit-audit.ps1",
+    "pre-tool-guard.ps1",
+    "session-context.ps1",
+    "workflow-guidance.ps1"
+  )
+}
+
+function Get-HarnessManagedSkills {
+  return @(
+    "discover-context",
+    "route-request",
+    "shape-design",
+    "write-implementation-plan",
+    "execute-plan",
+    "diagnose-failure",
+    "prove-behavior-first",
+    "implement-safely",
+    "verify-before-delivery",
+    "review-changes",
+    "request-review",
+    "handle-review-feedback",
+    "release-readiness",
+    "capture-memory",
+    "mcp-governance",
+    "plan-work"
+  )
+}
+
+function Get-HarnessManagedAgents {
+  return @(
+    "architect",
+    "implementer",
+    "mcp-curator",
+    "memory-curator",
+    "release-manager",
+    "reviewer",
+    "tester"
+  )
+}
+
 function Test-HarnessManagedExistingFile {
   param(
     [string]$RelativePath,
@@ -172,7 +216,10 @@ function Test-HarnessManagedExistingFile {
     "harness_status",
     "harness-server",
     "Source: scripts/",
-    "BEGIN HARNESS ENGINEERING"
+    "BEGIN HARNESS ENGINEERING",
+    ".harness/.claude",
+    "canonical Harness hook",
+    "canonical Harness Engineering"
   )
 
   foreach ($marker in $markers) {
@@ -310,10 +357,26 @@ function Add-HarnessBlock {
 function Merge-McpJson {
   param(
     [string]$SourcePath,
-    [string]$TargetPath
+    [string]$TargetPath,
+    [string]$HarnessRootRelative = "."
   )
 
   $source = Get-Content -LiteralPath $SourcePath -Raw | ConvertFrom-Json
+  $serverPath = "mcp/harness-server/server.js"
+  if ($HarnessRootRelative -ne ".") {
+    $serverPath = "$HarnessRootRelative/mcp/harness-server/server.js"
+  }
+  $serverPath = $serverPath -replace "\\", "/"
+  $source.mcpServers.harness.args = @($serverPath)
+  if ($null -eq $source.mcpServers.harness.env) {
+    $source.mcpServers.harness | Add-Member -NotePropertyName "env" -NotePropertyValue ([pscustomobject]@{})
+  }
+  if ($source.mcpServers.harness.env.PSObject.Properties.Name -contains "HARNESS_ROOT") {
+    $source.mcpServers.harness.env.HARNESS_ROOT = $HarnessRootRelative
+  } else {
+    $source.mcpServers.harness.env | Add-Member -NotePropertyName "HARNESS_ROOT" -NotePropertyValue $HarnessRootRelative
+  }
+
   if (Test-Path -LiteralPath $TargetPath) {
     $target = Get-Content -LiteralPath $TargetPath -Raw | ConvertFrom-Json
   } else {
@@ -331,6 +394,230 @@ function Merge-McpJson {
 
   Ensure-Directory -Path (Split-Path -Parent $TargetPath)
   $target | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $TargetPath -Encoding UTF8
+}
+
+function Set-HarnessTextFile {
+  param(
+    [string]$RelativePath,
+    [string]$TargetPath,
+    [string]$Content,
+    [bool]$Overwrite
+  )
+
+  if (Test-Path -LiteralPath $TargetPath) {
+    $existing = Get-Content -LiteralPath $TargetPath -Raw
+    if ($existing -ne $Content -and -not $Overwrite -and -not (Test-HarnessManagedExistingFile -RelativePath $RelativePath -Path $TargetPath)) {
+      throw "Target file already exists and differs: $RelativePath. Re-run with -Force to overwrite."
+    }
+  }
+
+  Ensure-Directory -Path (Split-Path -Parent $TargetPath)
+  Set-Content -LiteralPath $TargetPath -Encoding UTF8 -Value $Content
+}
+
+function Get-FrontmatterValue {
+  param(
+    [string]$Path,
+    [string]$Name
+  )
+
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $null
+  }
+
+  $content = Get-Content -LiteralPath $Path -Raw
+  $escapedName = [regex]::Escape($Name)
+  $match = [regex]::Match($content, "(?m)^$escapedName\s*:\s*(.+?)\s*$")
+  if ($match.Success) {
+    return $match.Groups[1].Value.Trim()
+  }
+
+  return $null
+}
+
+function New-HookBridgeContent {
+  param([string]$HookFile)
+
+  return (@(
+    'param()',
+    '',
+    '$ErrorActionPreference = "Stop"',
+    '$projectRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "../..")).Path',
+    '$harnessRoot = Join-Path $projectRoot ".harness"',
+    ('$scriptPath = Join-Path $harnessRoot ".claude/hooks/' + $HookFile + '"'),
+    'if (-not (Test-Path -LiteralPath $scriptPath)) {',
+    ('  throw "Missing canonical Harness hook: .harness/.claude/hooks/' + $HookFile + '"'),
+    '}',
+    '',
+    '$stdin = [Console]::In.ReadToEnd()',
+    'Push-Location -LiteralPath $projectRoot',
+    'try {',
+    '  if ([string]::IsNullOrEmpty($stdin)) {',
+    '    powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Root $harnessRoot',
+    '  } else {',
+    '    $stdin | powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Root $harnessRoot',
+    '  }',
+    '  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',
+    '} finally {',
+    '  Pop-Location',
+    '}'
+  ) -join [Environment]::NewLine)
+}
+
+function New-SkillBridgeContent {
+  param(
+    [string]$Name,
+    [string]$SourcePath
+  )
+
+  $description = Get-FrontmatterValue -Path $SourcePath -Name "description"
+  if ([string]::IsNullOrWhiteSpace($description)) {
+    $description = "Use when the Harness Engineering $Name skill is selected for the current request."
+  }
+
+  return (@(
+    "---",
+    "name: $Name",
+    "description: $description",
+    "---",
+    "",
+    "# $Name Bridge",
+    "",
+    "Use the canonical Harness Engineering skill at `.harness/.claude/skills/$Name/SKILL.md`.",
+    "Load that file and follow it as the source of truth before acting."
+  ) -join [Environment]::NewLine)
+}
+
+function New-AgentBridgeContent {
+  param(
+    [string]$Name,
+    [string]$SourcePath
+  )
+
+  $description = Get-FrontmatterValue -Path $SourcePath -Name "description"
+  if ([string]::IsNullOrWhiteSpace($description)) {
+    $description = "Use when the Harness Engineering $Name subagent role is selected for the current request."
+  }
+
+  return (@(
+    "---",
+    "name: $Name",
+    "description: $description",
+    "---",
+    "",
+    "# $Name Bridge",
+    "",
+    "Use the canonical Harness Engineering subagent at `.harness/.claude/agents/$Name.md`.",
+    "Load that file and follow it as the source of truth before acting."
+  ) -join [Environment]::NewLine)
+}
+
+function Install-RootClaudeBridges {
+  param(
+    [string]$Source,
+    [string]$TargetRoot,
+    [bool]$Overwrite
+  )
+
+  foreach ($hook in Get-HarnessManagedHooks) {
+    $relative = ".claude/hooks/$hook"
+    $targetPath = Join-Path $TargetRoot $relative
+    Set-HarnessTextFile -RelativePath $relative -TargetPath $targetPath -Content (New-HookBridgeContent -HookFile $hook) -Overwrite $Overwrite
+  }
+
+  foreach ($skill in Get-HarnessManagedSkills) {
+    $relative = ".claude/skills/$skill/SKILL.md"
+    $sourcePath = Join-Path $Source $relative
+    $targetPath = Join-Path $TargetRoot $relative
+    Set-HarnessTextFile -RelativePath $relative -TargetPath $targetPath -Content (New-SkillBridgeContent -Name $skill -SourcePath $sourcePath) -Overwrite $Overwrite
+  }
+
+  foreach ($agent in Get-HarnessManagedAgents) {
+    $relative = ".claude/agents/$agent.md"
+    $sourcePath = Join-Path $Source $relative
+    $targetPath = Join-Path $TargetRoot $relative
+    Set-HarnessTextFile -RelativePath $relative -TargetPath $targetPath -Content (New-AgentBridgeContent -Name $agent -SourcePath $sourcePath) -Overwrite $Overwrite
+  }
+}
+
+function Remove-EmptyDirectories {
+  param([string[]]$Roots)
+
+  foreach ($root in $Roots) {
+    if ([string]::IsNullOrWhiteSpace($root) -or -not (Test-Path -LiteralPath $root)) {
+      continue
+    }
+
+    $directories = @(Get-ChildItem -LiteralPath $root -Directory -Recurse | Sort-Object FullName -Descending)
+    $directories += Get-Item -LiteralPath $root
+    foreach ($directory in $directories) {
+      $children = @(Get-ChildItem -LiteralPath $directory.FullName -Force)
+      if ($children.Count -eq 0) {
+        Remove-Item -LiteralPath $directory.FullName -Force
+      }
+    }
+  }
+}
+
+function Remove-LegacyRootHarnessRuntime {
+  param(
+    [string]$Source,
+    [string]$TargetRoot
+  )
+
+  $legacyDirectories = @(
+    "agents",
+    "core",
+    "flows",
+    "mcp",
+    "protocols",
+    "scripts",
+    "wiki"
+  )
+  $removedDirectoryRoots = New-Object System.Collections.Generic.List[string]
+
+  foreach ($directory in $legacyDirectories) {
+    $sourceDirectory = Join-Path $Source $directory
+    $targetDirectory = Join-Path $TargetRoot $directory
+    if (-not (Test-Path -LiteralPath $sourceDirectory)) {
+      continue
+    }
+
+    foreach ($sourceFile in @(Get-ChildItem -LiteralPath $sourceDirectory -File -Recurse)) {
+      $relative = Get-RelativePath -Root $Source -Path $sourceFile.FullName
+      $targetPath = Join-Path $TargetRoot $relative
+      if ((Test-Path -LiteralPath $targetPath) -and (Test-HarnessManagedExistingFile -RelativePath $relative -Path $targetPath)) {
+        Remove-Item -LiteralPath $targetPath -Force
+      }
+    }
+
+    if (Test-Path -LiteralPath $targetDirectory) {
+      $removedDirectoryRoots.Add($targetDirectory)
+    }
+  }
+
+  foreach ($file in @("harness.yaml")) {
+    $targetPath = Join-Path $TargetRoot $file
+    if ((Test-Path -LiteralPath $targetPath) -and (Test-HarnessManagedExistingFile -RelativePath $file -Path $targetPath)) {
+      Remove-Item -LiteralPath $targetPath -Force
+    }
+  }
+
+  $legacyClaudeFiles = @(
+    ".claude/rules/delivery.md",
+    ".claude/rules/engineering.md",
+    ".claude/rules/security.md",
+    ".claude/skills/_quality/pressure-scenarios.md"
+  )
+
+  foreach ($relative in $legacyClaudeFiles) {
+    $targetPath = Join-Path $TargetRoot $relative
+    if ((Test-Path -LiteralPath $targetPath) -and (Test-HarnessManagedExistingFile -RelativePath $relative -Path $targetPath)) {
+      Remove-Item -LiteralPath $targetPath -Force
+    }
+  }
+
+  Remove-EmptyDirectories -Roots @($removedDirectoryRoots.ToArray(), (Join-Path $TargetRoot ".claude/rules"), (Join-Path $TargetRoot ".claude/skills/_quality"))
 }
 
 function Merge-ClaudeSettings {
@@ -475,6 +762,8 @@ function Install-Harness {
 
   $targetRoot = Resolve-InstallTarget -Path $Target
   $source = Resolve-HarnessSource -LocalSourceRoot $SourceRoot -Repository $Repo -Revision $Ref
+  $harnessRootRelative = ".harness"
+  $harnessRoot = Join-Path $targetRoot $harnessRootRelative
 
   $directories = @(
     ".claude",
@@ -487,28 +776,32 @@ function Install-Harness {
     "wiki"
   )
   $files = @(
-    "harness.yaml"
+    "README.md",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "harness.yaml",
+    ".mcp.json"
   )
-  $excluded = @(
-    ".claude/settings.json"
-  )
+  $excluded = @()
 
-  Copy-HarnessTree -Source $source -Destination $targetRoot -Directories $directories -Files $files -ExcludedRelativePaths $excluded -Overwrite $Force.IsPresent
+  Copy-HarnessTree -Source $source -Destination $harnessRoot -Directories $directories -Files $files -ExcludedRelativePaths $excluded -Overwrite $Force.IsPresent
+  Initialize-HarnessState -Destination $harnessRoot
+  Remove-LegacyRootHarnessRuntime -Source $source -TargetRoot $targetRoot
 
-  $claudeBody = "This project uses Harness Engineering. Read `harness.yaml`, `agents/registry.yaml`, and `protocols/context-loading.md`; then route requests before implementation and run verification before delivery."
-  $agentsBody = "This project uses Harness Engineering for Codex and other agents. Read `harness.yaml`, `agents/registry.yaml`, and the current agent manifest before modifying files."
-  $readmeBody = "This project has Harness Engineering installed. Run `powershell -NoProfile -ExecutionPolicy Bypass -File `"scripts/doctor.ps1`"` from the repository root to verify the runtime."
+  $claudeBody = "This project uses Harness Engineering. Read `.harness/harness.yaml`, `.harness/agents/registry.yaml`, and `.harness/protocols/context-loading.md`; then use root Claude bridge skills from `.claude/skills/` to load canonical skills under `.harness/.claude/skills/`."
+  $agentsBody = "This project uses Harness Engineering for Codex and other agents. Read `.harness/harness.yaml`, `.harness/agents/registry.yaml`, and the current agent manifest under `.harness/agents/` before modifying files."
+  $readmeBody = "This project has Harness Engineering installed under `.harness/`. Run `powershell -NoProfile -ExecutionPolicy Bypass -File `".harness/scripts/doctor.ps1`"` from the repository root to verify the runtime."
 
   Add-HarnessBlock -Path (Join-Path $targetRoot "CLAUDE.md") -Title "Claude Code Runtime Guide" -Body $claudeBody
   Add-HarnessBlock -Path (Join-Path $targetRoot "AGENTS.md") -Title "Agent Runtime Guide" -Body $agentsBody
   Add-HarnessBlock -Path (Join-Path $targetRoot "README.md") -Title "Project README" -Body $readmeBody
 
-  Merge-McpJson -SourcePath (Join-Path $source ".mcp.json") -TargetPath (Join-Path $targetRoot ".mcp.json")
+  Merge-McpJson -SourcePath (Join-Path $source ".mcp.json") -TargetPath (Join-Path $targetRoot ".mcp.json") -HarnessRootRelative $harnessRootRelative
   Merge-ClaudeSettings -SourcePath (Join-Path $source ".claude/settings.json") -TargetPath (Join-Path $targetRoot ".claude/settings.json")
-  Initialize-HarnessState -Destination $targetRoot
+  Install-RootClaudeBridges -Source $source -TargetRoot $targetRoot -Overwrite $Force.IsPresent
 
   if (-not $SkipDoctor) {
-    Push-Location -LiteralPath $targetRoot
+    Push-Location -LiteralPath $harnessRoot
     try {
       powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/doctor.ps1"
       if ($LASTEXITCODE -ne 0) {
@@ -520,6 +813,7 @@ function Install-Harness {
   }
 
   Write-Output "Harness installed: $targetRoot"
+  Write-Output "Runtime: $harnessRoot"
   Write-Output "Next: start Claude Code from the target root."
 }
 

@@ -39,7 +39,7 @@ request -> route -> plan -> implement -> verify -> review -> deliver -> memory
 Run:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/doctor.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/doctor.ps1"
 ```
 
 Expected result:
@@ -51,7 +51,7 @@ doctor: OK
 Check current task and memory counts:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" status
+powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/harness.ps1" status
 ```
 
 ## Route A Request Manually
@@ -59,33 +59,29 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" status
 Claude Code does this through hooks, but you can also test routing directly:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/route-request.ps1" -Prompt "Fix login failure and add regression verification"
+powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/route-request.ps1" -Prompt "Fix login failure and add regression verification"
 ```
 
 It returns the flow, stages, skills, artifacts, and next command.
 
 ## What The Installer Adds
 
-The installer copies or merges:
+The installer keeps the real Harness runtime under one directory:
 
-- `CLAUDE.md` and `AGENTS.md`
-- `.claude/settings.json`, hooks, skills, and subagents
-- `.mcp.json` and the local Harness MCP server
-- `scripts/` validation and workflow commands
-- `protocols/`, `flows/`, `core/`
-- `work/`, `memory/`, and `wiki/`
+- `.harness/` contains `harness.yaml`, `agents/`, `core/`, `flows/`, `mcp/`, `protocols/`, `scripts/`, `wiki/`, `memory/`, `work/`, and the canonical `.claude/` runtime.
+- `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, `.claude/settings.json`, `.claude/hooks/`, `.claude/skills/`, and `.claude/agents/` remain at the project root only as thin discovery bridges for Claude Code, Codex, and MCP.
 
-Existing `README.md`, `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, and `.claude/settings.json` are preserved by appending or merging Harness configuration. Other same-path file conflicts stop the install unless `-Force` is explicitly supplied.
+Existing `README.md`, `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, and `.claude/settings.json` are preserved by appending or merging Harness configuration. Existing project-owned `.claude` skills, subagents, and scripts are preserved; only recognizable Harness-managed legacy files are upgraded or cleaned.
 
 ## Useful Commands
 
 | Need | Command |
 | --- | --- |
-| Full health check | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/doctor.ps1"` |
-| Current status | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" status` |
-| Route a request | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/route-request.ps1" -Prompt "..."` |
-| Create task | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" new-task -Id "task-id" -Title "Task title" -Flow "feature-development" -Goal "Task goal" -Verify "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1"` |
-| Capture memory | `powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/harness.ps1" capture-memory -Layer project -Title "Decision title" -Fact "Reusable fact" -Source "Source" -Verified` |
+| Full health check | `powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/doctor.ps1"` |
+| Current status | `powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/harness.ps1" status` |
+| Route a request | `powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/route-request.ps1" -Prompt "..."` |
+| Create task | `powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/harness.ps1" new-task -Id "task-id" -Title "Task title" -Flow "feature-development" -Goal "Task goal" -Verify "powershell -NoProfile -ExecutionPolicy Bypass -File .harness/scripts/doctor.ps1"` |
+| Capture memory | `powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/harness.ps1" capture-memory -Layer project -Title "Decision title" -Fact "Reusable fact" -Source "Source" -Verified` |
 | Auto-maintenance | `powershell -NoProfile -ExecutionPolicy Bypass -File ".claude/hooks/auto-maintenance.ps1"` |
 
 ## Use This Repository Directly
@@ -110,14 +106,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "scripts/doctor.ps1"
 
 | Path | Responsibility |
 | --- | --- |
-| `.claude/` | First-class Claude Code runtime configuration, skills, subagents, and hooks |
-| `agents/` | Multi-agent routing registry and adapter manifests |
-| `protocols/` | Tool-agnostic engineering protocols |
-| `core/` | Engineering standards, principles, and checklists |
-| `flows/` | Team task flows |
-| `hooks/` | Hook scripts and shared policies |
-| `mcp/` | MCP services, catalog, contracts, and policies |
-| `wiki/` | Team knowledge base |
-| `memory/` | Layered team, project, and agent memory |
-| `work/` | Active, completed, and archived task state |
-| `scripts/` | Local validation and diagnostic scripts |
+| `.harness/` | Canonical Harness runtime, scripts, memory, wiki, MCP server, protocols, flows, and work state |
+| `.claude/` | Thin Claude Code discovery bridges that load canonical files from `.harness/.claude/` |
+| `.mcp.json` | Thin MCP bridge pointing to `.harness/mcp/harness-server/server.js` |
+| `CLAUDE.md` | Thin Claude Code guide pointing to `.harness/harness.yaml` and canonical protocols |
+| `AGENTS.md` | Thin Codex/agent guide pointing to `.harness/agents/registry.yaml` |

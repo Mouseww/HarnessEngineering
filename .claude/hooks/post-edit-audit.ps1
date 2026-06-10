@@ -1,6 +1,10 @@
+param(
+  [string]$Root = "."
+)
+
 $ErrorActionPreference = "Stop"
 
-$root = (Get-Location).Path
+$root = (Resolve-Path -LiteralPath $Root).Path
 $auditDir = Join-Path $root ".claude/agent-memory"
 $auditPath = Join-Path $auditDir "tool-audit.jsonl"
 

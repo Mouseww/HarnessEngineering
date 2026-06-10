@@ -38,6 +38,21 @@ function Resolve-Root {
   return (Resolve-Path -LiteralPath $Path).Path
 }
 
+function Resolve-RequestedRoot {
+  param([string]$Path)
+
+  if ($Path -ne "." -or [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    return $Path
+  }
+
+  $scriptRuntimeRoot = Join-Path $PSScriptRoot ".."
+  if (Test-Path -LiteralPath (Join-Path $scriptRuntimeRoot "harness.yaml")) {
+    return $scriptRuntimeRoot
+  }
+
+  return $Path
+}
+
 function Ensure-Directory {
   param([string]$Path)
 
@@ -479,7 +494,7 @@ function Get-WorkflowStatus {
   }
 }
 
-$resolvedRoot = Resolve-Root -Path $Root
+$resolvedRoot = Resolve-Root -Path (Resolve-RequestedRoot -Path $Root)
 
 switch ($Command) {
   "status" {

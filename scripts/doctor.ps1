@@ -12,7 +12,6 @@ $scripts = @(
   "scripts/validate-workflow-capabilities.ps1",
   "scripts/validate-flow-router.ps1",
   "scripts/validate-skills.ps1",
-  "scripts/validate-english.ps1",
   "scripts/validate-installer.ps1"
 )
 

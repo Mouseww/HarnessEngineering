@@ -1,6 +1,10 @@
+param(
+  [string]$Root = "."
+)
+
 $ErrorActionPreference = "Stop"
 
-$root = (Get-Location).Path
+$root = (Resolve-Path -LiteralPath $Root).Path
 $files = @(
   "harness.yaml",
   "agents/registry.yaml",
@@ -17,4 +21,3 @@ foreach ($file in $files) {
     Write-Output "- $file"
   }
 }
-

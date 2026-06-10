@@ -17,6 +17,21 @@ function Resolve-HarnessRoot {
   return (Resolve-Path -LiteralPath $Path).Path
 }
 
+function Resolve-RequestedRoot {
+  param([string]$Path)
+
+  if ($Path -ne "." -or [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    return $Path
+  }
+
+  $scriptRuntimeRoot = Join-Path $PSScriptRoot ".."
+  if (Test-Path -LiteralPath (Join-Path $scriptRuntimeRoot "harness.yaml")) {
+    return $scriptRuntimeRoot
+  }
+
+  return $Path
+}
+
 function Get-PromptText {
   param([string]$ExplicitPrompt)
 
@@ -75,6 +90,26 @@ function Add-Unique {
       $List.Add($value)
     }
   }
+}
+
+function Get-HarnessScriptCommandPath {
+  param([string]$HarnessRoot)
+
+  $current = (Get-Location).Path.TrimEnd("\", "/")
+  $normalizedHarnessRoot = $HarnessRoot.TrimEnd("\", "/")
+  $scriptPath = Join-Path $normalizedHarnessRoot "scripts/harness.ps1"
+
+  if ($normalizedHarnessRoot -eq $current) {
+    return "scripts/harness.ps1"
+  }
+
+  $prefix = $current + [System.IO.Path]::DirectorySeparatorChar
+  if ($normalizedHarnessRoot.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $relativeHarnessRoot = $normalizedHarnessRoot.Substring($prefix.Length) -replace "\\", "/"
+    return "$relativeHarnessRoot/scripts/harness.ps1"
+  }
+
+  return ($scriptPath -replace "\\", "/")
 }
 
 function Get-Route {
@@ -173,7 +208,8 @@ function Get-Route {
   )
 
   $safeGoal = $Text.Replace('"', "'")
-  $nextCommand = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/harness.ps1 brainstorm -Id `"$id`" -Topic `"Request routing: $flow`" -Goal `"$safeGoal`""
+  $harnessScript = Get-HarnessScriptCommandPath -HarnessRoot $HarnessRoot
+  $nextCommand = "powershell -NoProfile -ExecutionPolicy Bypass -File $harnessScript brainstorm -Id `"$id`" -Topic `"Request routing: $flow`" -Goal `"$safeGoal`""
 
   return [ordered]@{
     id = $id
@@ -238,7 +274,7 @@ function Write-RouteArtifacts {
   Set-Content -LiteralPath $markdownPath -Encoding UTF8 -Value ($lines -join [Environment]::NewLine)
 }
 
-$rootPath = Resolve-HarnessRoot -Path $Root
+$rootPath = Resolve-HarnessRoot -Path (Resolve-RequestedRoot -Path $Root)
 $promptText = Get-PromptText -ExplicitPrompt $Prompt
 $route = Get-Route -Text $promptText -HarnessRoot $rootPath
 
