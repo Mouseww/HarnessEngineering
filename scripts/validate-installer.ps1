@@ -208,6 +208,20 @@ Assert-True -Condition (Test-Path -LiteralPath (Join-Path $nestedProjectSkill "S
 Invoke-CheckedPowerShell -WorkingDirectory (Join-Path $target ".harness") -Arguments @("-File", "scripts/validate-claude-code.ps1")
 Invoke-CheckedPowerShell -WorkingDirectory (Join-Path $target ".harness") -Arguments @("-File", "scripts/validate-skills.ps1")
 
+if ($env:HARNESS_VALIDATE_INSTALLER_SKIP_ROOT_DOCTOR -ne "1") {
+  $previousSkipRootDoctor = $env:HARNESS_VALIDATE_INSTALLER_SKIP_ROOT_DOCTOR
+  $env:HARNESS_VALIDATE_INSTALLER_SKIP_ROOT_DOCTOR = "1"
+  try {
+    Invoke-CheckedPowerShell -WorkingDirectory $target -Arguments @("-File", ".harness/scripts/doctor.ps1")
+  } finally {
+    if ($null -eq $previousSkipRootDoctor) {
+      Remove-Item Env:\HARNESS_VALIDATE_INSTALLER_SKIP_ROOT_DOCTOR -ErrorAction SilentlyContinue
+    } else {
+      $env:HARNESS_VALIDATE_INSTALLER_SKIP_ROOT_DOCTOR = $previousSkipRootDoctor
+    }
+  }
+}
+
 $promptJson = '{"prompt":"Fix login failure and add regression verification"}'
 $routeOutput = $promptJson | powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $target ".claude/hooks/workflow-guidance.ps1")
 Assert-True -Condition (($routeOutput -join "`n") -like "*Harness Request Router*") -Message "Root workflow guidance hook bridge did not run."

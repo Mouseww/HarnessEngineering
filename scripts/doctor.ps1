@@ -1,5 +1,11 @@
 $ErrorActionPreference = "Stop"
 
+$harnessRoot = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+  (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+} else {
+  (Get-Location).Path
+}
+
 $scripts = @(
   "scripts/validate-harness.ps1",
   "scripts/validate-routing.ps1",
@@ -15,11 +21,16 @@ $scripts = @(
   "scripts/validate-installer.ps1"
 )
 
-foreach ($script in $scripts) {
-  powershell -NoProfile -ExecutionPolicy Bypass -File $script
-  if ($LASTEXITCODE -ne 0) {
-    throw "Validation failed: $script"
+Push-Location -LiteralPath $harnessRoot
+try {
+  foreach ($script in $scripts) {
+    powershell -NoProfile -ExecutionPolicy Bypass -File $script
+    if ($LASTEXITCODE -ne 0) {
+      throw "Validation failed: $script"
+    }
   }
+} finally {
+  Pop-Location
 }
 
 Write-Output "doctor: OK"
