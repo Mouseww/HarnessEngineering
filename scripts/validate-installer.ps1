@@ -236,6 +236,27 @@ Invoke-CheckedPowerShell -WorkingDirectory $userScriptTarget -Arguments @("-File
 $userScriptText = Get-Content -LiteralPath (Join-Path $userScriptTarget "scripts/install-harness.ps1") -Raw
 Assert-True -Condition ($userScriptText -like "*project owned installer*") -Message "Installer changed a same-path user script that was not Harness-managed."
 
+$legacyHookTarget = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-legacy-hook-" + [Guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Force -Path (Join-Path $legacyHookTarget ".claude/hooks") | Out-Null
+Set-Content -LiteralPath (Join-Path $legacyHookTarget ".claude/hooks/auto-maintenance.ps1") -Encoding UTF8 -Value (@(
+  'param(',
+  '  [string]$Root = "."',
+  ')',
+  '',
+  '$ErrorActionPreference = "Stop"',
+  '$scripts = @(',
+  '  "scripts/update-memory-index.ps1",',
+  '  "scripts/generate-code-map.ps1",',
+  '  "scripts/review-changes.ps1",',
+  '  "scripts/update-workflow-gates.ps1"',
+  ')',
+  'Write-Output "auto-maintenance: OK"'
+) -join [Environment]::NewLine)
+Invoke-CheckedPowerShell -WorkingDirectory $legacyHookTarget -Arguments @("-File", $installerPath, "-SourceRoot", $repoRoot, "-Target", ".", "-SkipDoctor")
+$legacyHookText = Get-Content -LiteralPath (Join-Path $legacyHookTarget ".claude/hooks/auto-maintenance.ps1") -Raw
+Assert-True -Condition ($legacyHookText -like "*canonical Harness hook*") -Message "Installer did not upgrade a legacy Harness-managed root hook bridge."
+Assert-True -Condition ($legacyHookText -like "*.harness/.claude/hooks/auto-maintenance.ps1*") -Message "Legacy Harness hook was not replaced with .harness bridge."
+
 $mixedSource = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-mixed-source-" + [Guid]::NewGuid().ToString("N"))
 $mixedTarget = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-mixed-target-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $mixedSource, (Join-Path $mixedTarget ".claude/skills/documentation-workflow") | Out-Null

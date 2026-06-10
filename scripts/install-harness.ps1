@@ -219,7 +219,16 @@ function Test-HarnessManagedExistingFile {
     "BEGIN HARNESS ENGINEERING",
     ".harness/.claude",
     "canonical Harness hook",
-    "canonical Harness Engineering"
+    "canonical Harness Engineering",
+    "auto-maintenance: OK",
+    "scripts/update-memory-index.ps1",
+    "scripts/generate-code-map.ps1",
+    "scripts/review-changes.ps1",
+    "scripts/update-workflow-gates.ps1",
+    "Harness Request Router",
+    "Harness guard blocked",
+    ".claude/agent-memory",
+    "tool-audit.jsonl"
   )
 
   foreach ($marker in $markers) {
