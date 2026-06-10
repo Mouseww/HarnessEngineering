@@ -1,6 +1,6 @@
-﻿# Code Structure Map
+# Code Structure Map
 
-- Generated: 2026-06-10T01:57:54.3020124Z
+- Generated: 2026-06-10T02:33:34.6588561Z
 - Source: scripts/generate-code-map.ps1
 
 ## Top-level Files

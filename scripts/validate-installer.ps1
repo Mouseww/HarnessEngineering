@@ -129,6 +129,19 @@ Invoke-CheckedPowerShell -WorkingDirectory $target -Arguments @("-File", "script
 Invoke-CheckedPowerShell -WorkingDirectory $target -Arguments @("-File", "scripts/validate-english.ps1")
 Invoke-CheckedPowerShell -WorkingDirectory $target -Arguments @("-File", "scripts/validate-skills.ps1")
 
+$mixedSource = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-mixed-source-" + [Guid]::NewGuid().ToString("N"))
+$mixedTarget = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-mixed-target-" + [Guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Force -Path $mixedSource, (Join-Path $mixedTarget ".claude/skills/documentation-workflow") | Out-Null
+Copy-HarnessProbeSource -SourceRoot $repoRoot -Destination $mixedSource
+New-Item -ItemType Directory -Force -Path (Join-Path $mixedSource ".claude/skills/documentation-workflow") | Out-Null
+Set-Content -LiteralPath (Join-Path $mixedSource ".claude/skills/documentation-workflow/SKILL.md") -Encoding UTF8 -Value "source project skill"
+Set-Content -LiteralPath (Join-Path $mixedTarget ".claude/skills/documentation-workflow/SKILL.md") -Encoding UTF8 -Value "target project skill"
+
+Invoke-CheckedPowerShell -WorkingDirectory $mixedTarget -Arguments @("-File", $installer, "-SourceRoot", $mixedSource, "-Target", ".", "-SkipDoctor")
+$mixedSkillText = Get-Content -LiteralPath (Join-Path $mixedTarget ".claude/skills/documentation-workflow/SKILL.md") -Raw
+Assert-True -Condition ($mixedSkillText -like "*target project skill*") -Message "Installer did not preserve the target project skill."
+Assert-True -Condition ($mixedSkillText -notlike "*source project skill*") -Message "Installer copied a non-Harness source skill into the target project."
+
 $probeSource = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-source-probe-" + [Guid]::NewGuid().ToString("N"))
 $probeTarget = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-target-probe-" + [Guid]::NewGuid().ToString("N"))
 $probeWorkingDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-working-probe-" + [Guid]::NewGuid().ToString("N"))

@@ -79,6 +79,74 @@ function Get-RelativePath {
   return $Path.Substring($Root.Length).TrimStart("\", "/") -replace "\\", "/"
 }
 
+function Test-HarnessManagedRelativePath {
+  param([string]$RelativePath)
+
+  $path = $RelativePath -replace "\\", "/"
+  if ($path -notlike ".claude/*") {
+    return $true
+  }
+
+  $managedClaudeFiles = @(
+    ".claude/hooks/auto-maintenance.ps1",
+    ".claude/hooks/post-edit-audit.ps1",
+    ".claude/hooks/pre-tool-guard.ps1",
+    ".claude/hooks/session-context.ps1",
+    ".claude/hooks/workflow-guidance.ps1",
+    ".claude/rules/delivery.md",
+    ".claude/rules/engineering.md",
+    ".claude/rules/security.md",
+    ".claude/skills/_quality/pressure-scenarios.md"
+  )
+
+  if ($managedClaudeFiles -contains $path) {
+    return $true
+  }
+
+  $managedSkills = @(
+    "discover-context",
+    "route-request",
+    "shape-design",
+    "write-implementation-plan",
+    "execute-plan",
+    "diagnose-failure",
+    "prove-behavior-first",
+    "implement-safely",
+    "verify-before-delivery",
+    "review-changes",
+    "request-review",
+    "handle-review-feedback",
+    "release-readiness",
+    "capture-memory",
+    "mcp-governance",
+    "plan-work"
+  )
+
+  foreach ($skill in $managedSkills) {
+    if ($path -eq ".claude/skills/$skill/SKILL.md") {
+      return $true
+    }
+  }
+
+  $managedAgents = @(
+    "architect",
+    "implementer",
+    "mcp-curator",
+    "memory-curator",
+    "release-manager",
+    "reviewer",
+    "tester"
+  )
+
+  foreach ($agent in $managedAgents) {
+    if ($path -eq ".claude/agents/$agent.md") {
+      return $true
+    }
+  }
+
+  return $false
+}
+
 function Copy-HarnessTree {
   param(
     [string]$Source,
@@ -115,6 +183,9 @@ function Copy-HarnessTree {
       if ($ExcludedRelativePaths -contains $relative) {
         continue
       }
+      if (-not (Test-HarnessManagedRelativePath -RelativePath $relative)) {
+        continue
+      }
       $targetPath = Join-Path $Destination $relative
       if ((Test-Path -LiteralPath $targetPath) -and -not $Overwrite) {
         $sourceText = Get-Content -LiteralPath $sourceFile.FullName -Raw
@@ -139,6 +210,9 @@ function Copy-HarnessTree {
     foreach ($sourceFile in $sourceFiles) {
       $relative = Get-RelativePath -Root $Source -Path $sourceFile.FullName
       if ($ExcludedRelativePaths -contains $relative) {
+        continue
+      }
+      if (-not (Test-HarnessManagedRelativePath -RelativePath $relative)) {
         continue
       }
       $targetPath = Join-Path $Destination $relative

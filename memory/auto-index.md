@@ -1,6 +1,6 @@
-﻿# Memory Auto Index
+# Memory Auto Index
 
-- Generated: 2026-06-10T01:57:53.6576946Z
+- Generated: 2026-06-10T02:33:34.1985924Z
 - Source: scripts/update-memory-index.ps1
 
 ## Entries

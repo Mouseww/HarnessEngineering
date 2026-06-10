@@ -1,11 +1,11 @@
-﻿# Automated Code Review
+# Automated Code Review
 
-- Generated: 2026-06-10T01:57:55.5016452Z
+- Generated: 2026-06-10T02:33:35.5536178Z
 - Source: scripts/review-changes.ps1
 
 ## Review Summary
 
-- files reviewed: 11
+- files reviewed: 5
 - findings: 0
 
 ## Findings
