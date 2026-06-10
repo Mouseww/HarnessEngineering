@@ -28,6 +28,31 @@ function Invoke-CheckedPowerShell {
   }
 }
 
+function Invoke-PowerShellProcess {
+  param(
+    [Parameter(Mandatory = $true)][string]$WorkingDirectory,
+    [Parameter(Mandatory = $true)][string]$ArgumentString
+  )
+
+  $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+  $processInfo.FileName = "powershell"
+  $processInfo.Arguments = $ArgumentString
+  $processInfo.WorkingDirectory = $WorkingDirectory
+  $processInfo.RedirectStandardOutput = $true
+  $processInfo.RedirectStandardError = $true
+  $processInfo.UseShellExecute = $false
+
+  $process = [System.Diagnostics.Process]::Start($processInfo)
+  $stdout = $process.StandardOutput.ReadToEnd()
+  $stderr = $process.StandardError.ReadToEnd()
+  $process.WaitForExit()
+
+  return [pscustomobject]@{
+    ExitCode = $process.ExitCode
+    Output = ($stdout + "`n" + $stderr)
+  }
+}
+
 function Copy-HarnessProbeSource {
   param(
     [Parameter(Mandatory = $true)][string]$SourceRoot,
@@ -128,6 +153,26 @@ Assert-True -Condition (Test-Path -LiteralPath $legacyAgent) -Message "Installer
 Invoke-CheckedPowerShell -WorkingDirectory $target -Arguments @("-File", "scripts/validate-claude-code.ps1")
 Invoke-CheckedPowerShell -WorkingDirectory $target -Arguments @("-File", "scripts/validate-english.ps1")
 Invoke-CheckedPowerShell -WorkingDirectory $target -Arguments @("-File", "scripts/validate-skills.ps1")
+
+$installedHarnessScript = Join-Path $target "scripts/install-harness.ps1"
+Set-Content -LiteralPath $installedHarnessScript -Encoding UTF8 -Value @'
+param()
+function Install-Harness {
+  Write-Output "old Harness installer"
+}
+'@
+Invoke-CheckedPowerShell -WorkingDirectory $target -Arguments @("-File", $installer, "-SourceRoot", $repoRoot, "-Target", ".", "-SkipDoctor")
+$sourceInstallerText = Get-Content -LiteralPath $installer -Raw
+$upgradedInstallerText = Get-Content -LiteralPath $installedHarnessScript -Raw
+Assert-True -Condition ($upgradedInstallerText -eq $sourceInstallerText) -Message "Installer did not upgrade an existing Harness-managed installer script."
+
+$userConflictTarget = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-user-conflict-" + [Guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Force -Path (Join-Path $userConflictTarget "scripts") | Out-Null
+Set-Content -LiteralPath (Join-Path $userConflictTarget "scripts/install-harness.ps1") -Encoding UTF8 -Value 'Write-Output "project owned installer"'
+$userConflictArguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $installer + '" -SourceRoot "' + $repoRoot + '" -Target "." -SkipDoctor'
+$userConflictResult = Invoke-PowerShellProcess -WorkingDirectory $userConflictTarget -ArgumentString $userConflictArguments
+$blockedUserConflict = $userConflictResult.ExitCode -ne 0 -and ($userConflictResult.Output -like "*Target file already exists and differs: scripts/install-harness.ps1*")
+Assert-True -Condition $blockedUserConflict -Message "Installer overwrote a same-path user script that was not Harness-managed."
 
 $mixedSource = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-mixed-source-" + [Guid]::NewGuid().ToString("N"))
 $mixedTarget = Join-Path ([System.IO.Path]::GetTempPath()) ("harness-mixed-target-" + [Guid]::NewGuid().ToString("N"))

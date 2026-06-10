@@ -147,6 +147,67 @@ function Test-HarnessManagedRelativePath {
   return $false
 }
 
+function Test-HarnessManagedExistingFile {
+  param(
+    [string]$RelativePath,
+    [string]$Path
+  )
+
+  if (-not (Test-HarnessManagedRelativePath -RelativePath $RelativePath)) {
+    return $false
+  }
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $false
+  }
+
+  $content = Get-Content -LiteralPath $Path -Raw
+  $markers = @(
+    "Harness Engineering",
+    "HarnessEngineering",
+    "Install-Harness",
+    "harness.yaml",
+    "validate-harness",
+    "validate-installer",
+    "validate-claude-code",
+    "harness_status",
+    "harness-server",
+    "Source: scripts/",
+    "BEGIN HARNESS ENGINEERING"
+  )
+
+  foreach ($marker in $markers) {
+    if ($content -like "*$marker*") {
+      return $true
+    }
+  }
+
+  return $false
+}
+
+function Test-HarnessFileConflict {
+  param(
+    [string]$RelativePath,
+    [string]$SourcePath,
+    [string]$TargetPath,
+    [bool]$Overwrite
+  )
+
+  if (-not (Test-Path -LiteralPath $TargetPath)) {
+    return $false
+  }
+  if ($Overwrite) {
+    return $false
+  }
+
+  $sourceText = Get-Content -LiteralPath $SourcePath -Raw
+  $targetText = Get-Content -LiteralPath $TargetPath -Raw
+  if ($sourceText -eq $targetText) {
+    return $false
+  }
+
+  return -not (Test-HarnessManagedExistingFile -RelativePath $RelativePath -Path $TargetPath)
+}
+
 function Copy-HarnessTree {
   param(
     [string]$Source,
@@ -163,12 +224,8 @@ function Copy-HarnessTree {
       throw "Harness source is missing required file: $file"
     }
     $targetPath = Join-Path $Destination $file
-    if ((Test-Path -LiteralPath $targetPath) -and -not $Overwrite) {
-      $sourceText = Get-Content -LiteralPath $sourcePath -Raw
-      $targetText = Get-Content -LiteralPath $targetPath -Raw
-      if ($sourceText -ne $targetText) {
-        throw "Target file already exists and differs: $file. Re-run with -Force to overwrite."
-      }
+    if (Test-HarnessFileConflict -RelativePath $file -SourcePath $sourcePath -TargetPath $targetPath -Overwrite $Overwrite) {
+      throw "Target file already exists and differs: $file. Re-run with -Force to overwrite."
     }
   }
 
@@ -187,12 +244,8 @@ function Copy-HarnessTree {
         continue
       }
       $targetPath = Join-Path $Destination $relative
-      if ((Test-Path -LiteralPath $targetPath) -and -not $Overwrite) {
-        $sourceText = Get-Content -LiteralPath $sourceFile.FullName -Raw
-        $targetText = Get-Content -LiteralPath $targetPath -Raw
-        if ($sourceText -ne $targetText) {
-          throw "Target file already exists and differs: $relative. Re-run with -Force to overwrite."
-        }
+      if (Test-HarnessFileConflict -RelativePath $relative -SourcePath $sourceFile.FullName -TargetPath $targetPath -Overwrite $Overwrite) {
+        throw "Target file already exists and differs: $relative. Re-run with -Force to overwrite."
       }
     }
   }
@@ -201,7 +254,7 @@ function Copy-HarnessTree {
     $sourcePath = Join-Path $Source $file
     $targetPath = Join-Path $Destination $file
     Ensure-Directory -Path (Split-Path -Parent $targetPath)
-    Copy-Item -LiteralPath $sourcePath -Destination $targetPath -Force:$Overwrite
+    Copy-Item -LiteralPath $sourcePath -Destination $targetPath -Force
   }
 
   foreach ($directory in $Directories) {
@@ -217,7 +270,7 @@ function Copy-HarnessTree {
       }
       $targetPath = Join-Path $Destination $relative
       Ensure-Directory -Path (Split-Path -Parent $targetPath)
-      Copy-Item -LiteralPath $sourceFile.FullName -Destination $targetPath -Force:$Overwrite
+      Copy-Item -LiteralPath $sourceFile.FullName -Destination $targetPath -Force
     }
   }
 }
