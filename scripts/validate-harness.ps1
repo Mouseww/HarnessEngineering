@@ -25,7 +25,9 @@ $required = @(
   "work/plans",
   "scripts/validate-workflow-capabilities.ps1",
   "scripts/validate-flow-router.ps1",
+  "scripts/uninstall-harness.ps1",
   "scripts/route-request.ps1",
+  "scripts/validate-uninstaller.ps1",
   ".claude/hooks/workflow-guidance.ps1",
   "scripts/update-workflow-gates.ps1",
   "work/request-routing"

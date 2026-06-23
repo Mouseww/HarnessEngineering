@@ -22,6 +22,16 @@ Use a first prompt like this:
 Use this repository's Harness Engineering runtime. Route my request first, then follow the selected flow, skills, hooks, and verification gates.
 ```
 
+## Uninstall From A Project
+
+Run this from the root of the project you want to clean:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/Mouseww/HarnessEngineering/main/scripts/uninstall-harness.ps1 | iex; Uninstall-Harness -Target ."
+```
+
+The uninstaller removes `.harness/`, Harness bridge hooks/skills/subagents, Harness MCP registration, and Harness blocks in `README.md`, `CLAUDE.md`, and `AGENTS.md`. Project-owned files and non-Harness `.claude` entries are preserved.
+
 ## Daily Use
 
 1. Ask Claude Code for real work from the project root.
@@ -83,6 +93,7 @@ Existing `README.md`, `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, and `.claude/settin
 | Create task | `powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/harness.ps1" new-task -Id "task-id" -Title "Task title" -Flow "feature-development" -Goal "Task goal" -Verify "powershell -NoProfile -ExecutionPolicy Bypass -File .harness/scripts/doctor.ps1"` |
 | Capture memory | `powershell -NoProfile -ExecutionPolicy Bypass -File ".harness/scripts/harness.ps1" capture-memory -Layer project -Title "Decision title" -Fact "Reusable fact" -Source "Source" -Verified` |
 | Auto-maintenance | `powershell -NoProfile -ExecutionPolicy Bypass -File ".claude/hooks/auto-maintenance.ps1"` |
+| Uninstall Harness | `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/Mouseww/HarnessEngineering/main/scripts/uninstall-harness.ps1 \| iex; Uninstall-Harness -Target ."` |
 
 ## Use This Repository Directly
 

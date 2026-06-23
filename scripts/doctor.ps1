@@ -18,7 +18,8 @@ $scripts = @(
   "scripts/validate-workflow-capabilities.ps1",
   "scripts/validate-flow-router.ps1",
   "scripts/validate-skills.ps1",
-  "scripts/validate-installer.ps1"
+  "scripts/validate-installer.ps1",
+  "scripts/validate-uninstaller.ps1"
 )
 
 Push-Location -LiteralPath $harnessRoot
